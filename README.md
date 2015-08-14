@@ -48,6 +48,27 @@ I made this for personal use and curiousity but more for **understanding** what 
 
         See graphs pictured above.
 
+# or if you want a PNG named "foo.png"
+
+`php -f specificity.php github.css | ./eplot --png`
+
+![](foo.png)
+
+*Note: github's actual css as of Fri 14 Aug 2015 03:56:50 PM EDT*
+
+*Note: graph may be wrong. *
+
+# or just save the data points
+
+And feed them to `gnuplot` yourself with all your favorite parameters and the 3D views and the pepper brush.
+
+`php -f specificity.php graphsgraphsgraphs.com.css > datapoints.dat`
+
+`gnuplot`
+
+`gnuplot> plot 'datapoints.dat'`
+
+
 # or if you're a hipster nerd
 
 `php -f specificity.php some.css --output-json`
@@ -100,7 +121,7 @@ I made this for personal use and curiousity but more for **understanding** what 
 
 # disclaimer
 
-I haven't tested it very thoroughly yet so use at your own risk or something
+I haven't tested it thoroughly yet so use at your own risk or something
 
 # credits
 
