@@ -266,6 +266,8 @@ $pos = 1;
 foreach($match as $m) {
     $selectors_list = explode(',', $m[1]);
     foreach($selectors_list as $selector) {
+        if(trim($selector) === "")
+            continue;
         $a = $b = $c = 0;
 
         // ids
@@ -297,7 +299,7 @@ foreach($match as $m) {
                     $ps_el++;
                 else
                     $ps_cl++;
-                // see above note on $pseudo_classes
+                // see below note on $pseudo_classes
             }
         }
 
