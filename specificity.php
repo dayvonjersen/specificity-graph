@@ -3,15 +3,32 @@ $all = file_get_contents($argv[1]);
 define(OUTPUT_JSON,($argv[2] == '--output-json'));
 define(OUTPUT_DATA,!OUTPUT_JSON);    
 
-// grab media rules
-preg_match_all('/@media[^\{]+?\{((([^\{]+)\{[^\}]*?\})*?)\}/', $all, $match, PREG_SET_ORDER);
-foreach($match as $m) $all = str_replace($m[0],$m[1],$all);
+// remove comments ~_~
+$all = preg_replace('/\/\*.*?\*\//ms', '', $all);
 
+// weird shit
+$all = preg_replace('/\$\{.*?\}/ms', '', $all);
+
+// grab nested at-rules
+preg_match_all('/@(media|font-face|keyframes|-webkit-keyframes).*?[^\{]+?\{((([^\{]+)\{[^\}]*?\})*?)\}/ms', $all, $match, PREG_SET_ORDER);
+foreach($match as $m) {
+    switch($m[1]) {
+        case 'media':
+            $all = str_replace($m[0],$m[2],$all);
+            break;
+        case 'font-face':
+        // there might be more I'm forgetting right now...
+        case 'keyframes':
+        case '-webkit-keyframes':
+            $all = str_replace($m[0],'',$all);
+            break;
+    }
+}
 // destroy remaining at-rules which interfere with next regex 
-$all = preg_replace('/@[a-z0-9-_].*?;/','', $all.';');
+$all = preg_replace('/@[a-z0-9-_].*?;/ms','', $all.';');
 
 // grab actual rules
-preg_match_all('/([^\{]+)(\{.*?\})|;/',$all, $match,PREG_SET_ORDER);
+preg_match_all('/([^\{]+)(\{([a-z0-9-]+?\s*:\s*[^;]+?;?)*?\})|;/ms',$all, $match,PREG_SET_ORDER);
 
 // BEGIN DEFINITIONS
 $pseudo_elements = [
@@ -283,12 +300,12 @@ foreach($match as $m) {
         // attributes
         $at = 0;
         if(strpos($selector,'[') !== false)
-            $at = preg_match_all('/\[.*?\]/', $selector);
+            $at = preg_match_all('/\[.*?\]/ms', $selector);
 
         // pseudo
         $ps_cl = 0;
         $ps_el = 0;
-        if(strpos($selector,':') !== false && preg_match('/:{1,2}([a-z0-9-]+)/i', $selector, $n)) {
+        if(strpos($selector,':') !== false && preg_match('/:{1,2}([a-z0-9-]+)/ims', $selector, $n)) {
             $pseudo = strtolower($n[1]);
 /**
  * Selectors inside the negation pseudo-class are counted like any other, 
@@ -305,8 +322,8 @@ foreach($match as $m) {
 
         // elements
         $el = 0;
-        $elements = preg_replace('/(\*)|((#|\.)[a-z0-9-_]+)|(\[.*?\])|(:{1,2}([a-z0-9-]+(\(.*?\))?))/i', '', $selector);
-        $el = count(preg_split('/\s+/',trim($elements)));
+        $elements = preg_replace('/(\*)|((#|\.)[a-z0-9-_]+)|(\[.*?\])|(:{1,2}([a-z0-9-]+(\(.*?\))?))/ims', '', $selector);
+        $el = count(preg_split('/\s+/m',trim($elements)));
 /**
  *      9. Calculating a selector's specificity
  *
@@ -325,7 +342,7 @@ foreach($match as $m) {
         $specificity = sprintf("%d",sprintf("%d%d%d",$a,$b,$c));
         if(OUTPUT_JSON) {
             $out[] = [
-                'selector'    => $selector,
+                'selector'    => preg_replace('/\s+/',' ',trim($selector)),
                 'specificity' => $specificity,
                 'position'    => $pos
             ];
