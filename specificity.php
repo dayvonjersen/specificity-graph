@@ -282,12 +282,22 @@ foreach($match as $m) {
         $important = preg_match_all('/!important/i', $m[2]);
     }
     foreach($selectors_list as $selector) {
-        // sometimes there's random junk at the start of the selectors and I don't know why fgsfds
+        // NOTE: sometimes there's random junk at the start of the selectors and I don't know why fgsfds
         $selector = trim(preg_replace('/^[^a-z0-9-_\[\*\#\+~\>\:\.\s]+/mis', '', $selector));
         if($selector == "")
             continue;
         $a = $b = $c = 0;
+        $original_selector = $selector;
 
+        /** NOTE: attribute selectors can contain quoted strings which can fuck this all up
+         * e.g. a[href^="#"] triggers the dumb ID check below.
+         * so lets just get rid of them first. */
+        // attributes
+        $at = 0;
+        if(strpos($selector,'[') !== false) {
+            $at = preg_match_all('/\[.*?\]/ms', $selector,$match);
+            foreach($match as $m) $selector = str_replace($m[0],'',$selector);
+        }
         // ids
         $id = 0;
         $id_pos = -1;
@@ -297,11 +307,6 @@ foreach($match as $m) {
         $cl = 0;
         $cl_pos = -1;
         while(($cl_pos = strpos($selector,'.',$cl_pos+1)) !== false) $cl++;
-
-        // attributes
-        $at = 0;
-        if(strpos($selector,'[') !== false)
-            $at = preg_match_all('/\[.*?\]/ms', $selector);
 
         // pseudo
         $ps_cl = 0;
@@ -357,7 +362,7 @@ foreach($match as $m) {
 
         if(OUTPUT_JSON) {
             $out[] = [
-                'selector'    => preg_replace('/\s+/',' ',trim($selector)),
+                'selector'    => preg_replace('/\s+/',' ',trim($original_selector)),
                 'specificity' => [
                         'base36'  => $base36,
                         'base10'  => $base10,
