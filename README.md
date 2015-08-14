@@ -8,11 +8,11 @@ I'd try to write a paragraph here, but [Harry Roberts](http://csswizardry.com/) 
 
 Apparently most people's CSS looks like this:
 
-![](http://var.abl.cl/specificity-graph-screenshot.png)
+![](https://u.teknik.io/kt7lzi.png)
 
 When ideal CSS looks like this:
 
-![](http://var.abl.cl/specificity-graph-screenshot-2.png)
+![](https://u.teknik.io/tu3gn7.png)
 
 I never bothered to look up how specificity is actually calculated and it turns out it's not completely trivial (unless you just happen to add it to a CSS parser... maybe there's something for postcss already and I just wasted my time...shit.)
 
