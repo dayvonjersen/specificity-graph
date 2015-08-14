@@ -24,6 +24,7 @@
 # 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.   
 # **************************************************************************
 # Changelog:
+# tso@8/14/2015 12:48:31 PM defaults to terminal mode, flags should work 
 # tso@8/14/2015 9:00:07 AM added com=com+"set terminal dumb;\n" line 381
 # 2.07 03.05.2007: -bugfix case where input file is empty
 # 2.06 09.12.2005: -bugfix style not set when single plot from stdin
@@ -136,7 +137,7 @@ class OptionController
 		@o["Range"]=""
 		@o["OutputFileDefault"]=""
 		@o["OutputFileSpecified"]=""				
-		
+	    @o["DoTerminalPlot"]=true	
 		i=0
 		com=""
 		while i<xargv.length
@@ -156,22 +157,26 @@ class OptionController
 				when /^-P$|^--png$/
 					com=com+"set terminal png;\n"
 					@o["OutputFileDefault"]="foo.png"
+                    @o["DoTerminalPlot"]=false	
 			
 				# ---- Do we create Postscript output?
 				when /^-p$|^--postscript$/
 					com=com+"set terminal postscript color;\n"
 					@o["OutputFileDefault"]="foo.ps"
+                    @o["DoTerminalPlot"]=false	
 			
 				# ---- Do we create EMF output?
 				when /^-e$|^--emf$/
 					com=com+"set terminal emf \"helvetica\";\n"
 					@o["OutputFileDefault"]="foo.emf"
+                    @o["DoTerminalPlot"]=false	
 			
 				# ---- Do we create PDF output? First we create postscript
 				# ---- A conversion is done afterwards
 				when /^-a$|^--acrobat$|--pdf$/
 					com=com+"set terminal postscript color;\n"
 					@o["DoPDF"]=true
+                    @o["DoTerminalPlot"]=false	
 					
 				# ---- Specify a custom output file
 				when /^-o$|^--output$/
@@ -250,7 +255,7 @@ class OptionController
 					exit 1
 			
 				# ---- The argument is not an option but a file
-				else				
+				else
 					@o["Files"].push(opt)
 			end
 			i=i+1
@@ -378,7 +383,9 @@ class Controller
 		# ---- print the options
 		com="echo '\n"+getStyleString+@oc["MiscOptions"]
 		com=com+"set multiplot;\n" if doMultiPlot
-		com=com+"set terminal dumb;\n"
+        if @oc["DoTerminalPlot"]
+		    com=com+"set terminal dumb;\n"
+        end
 		com=com+"plot "+@oc["Range"]+comString+"\n'| gnuplot -persist"
 		printAndRun(com)		
 		# ---- convert to PDF
