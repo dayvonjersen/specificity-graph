@@ -278,8 +278,13 @@ $out = [];
 $pos = 1;
 foreach($match as $m) {
     $selectors_list = explode(',', trim($m[1]));
+    if(OUTPUT_JSON) {
+        $important = preg_match_all('/!important/i', $m[2]);
+    }
     foreach($selectors_list as $selector) {
-        if(trim($selector) === "")
+        // sometimes there's random junk at the start of the selectors and I don't know why fgsfds
+        $selector = trim(preg_replace('/^[^a-z0-9-_\[\*\#\+~\>\:\.\s]+/mis', '', $selector));
+        if($selector == "")
             continue;
         $a = $b = $c = 0;
 
@@ -337,22 +342,34 @@ foreach($match as $m) {
  *          count the number of type selectors and pseudo-elements in the selector (= c)
  *          ignore the universal selector 
  *
- *      Concatenating the three numbers a-b-c (in a number system with a large base) gives the specificity. 
  */
         $a = $id;
         $b = $cl + $at + $ps_cl;
         $c = $el + $ps_el;
-        $specificity = sprintf("%d",ltrim($a.$b.$c, '0'));
+/*
+ *      Concatenating the three numbers a-b-c (in a number system with a large base) gives the specificity. 
+ */
+        $base36_a = base_convert($a, 10, 36);
+        $base36_b = base_convert($b, 10, 36);
+        $base36_c = base_convert($c, 10, 36);
+        $base36 = $base36_a.$base36_b.$base36_c;
+        $base10 = base_convert($base36, 36, 10);
+
         if(OUTPUT_JSON) {
             $out[] = [
                 'selector'    => preg_replace('/\s+/',' ',trim($selector)),
-                'specificity' => $specificity,
+                'specificity' => [
+                        'base36'  => $base36,
+                        'base10'  => $base10,
+                        'tuple'   => [0,$a,$b,$c]
+                ],
                 'position'    => $pos,
+                'important'   => $important
 //                'elements-debug' => $elements,
 //                'a-b-c-debug'=>[$a,$b,$c]
             ];
         } else {
-            $out[] = "$pos $specificity";
+            $out[] = "$pos $base10";
         }
     }
     $pos++; // increment here, not per comma-separated-value
