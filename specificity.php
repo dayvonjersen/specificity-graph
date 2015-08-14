@@ -3,32 +3,28 @@ $all = file_get_contents($argv[1]);
 define(OUTPUT_JSON,($argv[2] == '--output-json'));
 define(OUTPUT_DATA,!OUTPUT_JSON);    
 
-// remove comments ~_~
-$all = preg_replace('/\/\*.*?\*\//ms', '', $all);
+// remove comments
+// I kept finding a */.some-class in my testing
+// credit to http://blog.ostermiller.org/find-comment
+$all = preg_replace('/\/\*([^*]|[\r\n\s]|(\*+([^*\/]|[\r\n\s])))*\*+/ms', '', $all);
+// turns out it's an actual typo in my test file
 
-// weird shit
+// weird shit related to filters ${iefactor} ???
 $all = preg_replace('/\$\{.*?\}/ms', '', $all);
 
-// grab nested at-rules
-preg_match_all('/@(media|font-face|keyframes|-webkit-keyframes).*?[^\{]+?\{((([^\{]+)\{[^\}]*?\})*?)\}/ms', $all, $match, PREG_SET_ORDER);
-foreach($match as $m) {
-    switch($m[1]) {
-        case 'media':
-            $all = str_replace($m[0],$m[2],$all);
-            break;
-        case 'font-face':
-        // there might be more I'm forgetting right now...
-        case 'keyframes':
-        case '-webkit-keyframes':
-            $all = str_replace($m[0],'',$all);
-            break;
-    }
-}
-// destroy remaining at-rules which interfere with next regex 
-$all = preg_replace('/@[a-z0-9-_].*?;/ms','', $all.';');
+// remove @media
+$all = preg_replace('/@media[^\{]*?\{/mis', '', $all);
+$all = preg_replace('/\}\s*\}/ms', '}', $all);
+
+// destroy all remaining at-rules which break everything
+// nested such as @font-face and @keyframes
+preg_match_all('/@(-[a-z]+?-)?([a-z-]+)\{(.*?)\}/mis', $all, $match, PREG_SET_ORDER);
+foreach($match as $m) $all = str_replace($m[0],'',$all);
+// and shit like @import and @charset
+$all = preg_replace('/@[a-z0-9-_]+.*?;/ms','', $all);
 
 // grab actual rules
-preg_match_all('/([^\{]+)(\{([a-z0-9-]+?\s*:\s*[^;]+?;?)*?\})|;/ms',$all, $match,PREG_SET_ORDER);
+preg_match_all('/([^\{]+?)\s*(\{.*?\})/mis',$all, $match,PREG_SET_ORDER);
 
 // BEGIN DEFINITIONS
 $pseudo_elements = [
@@ -281,7 +277,7 @@ $pseudo_elements = [
 $out = [];
 $pos = 1;
 foreach($match as $m) {
-    $selectors_list = explode(',', $m[1]);
+    $selectors_list = explode(',', trim($m[1]));
     foreach($selectors_list as $selector) {
         if(trim($selector) === "")
             continue;
@@ -305,25 +301,32 @@ foreach($match as $m) {
         // pseudo
         $ps_cl = 0;
         $ps_el = 0;
-        if(strpos($selector,':') !== false && preg_match('/:{1,2}([a-z0-9-]+)/ims', $selector, $n)) {
-            $pseudo = strtolower($n[1]);
-/**
- * Selectors inside the negation pseudo-class are counted like any other, 
- * but the negation itself does not count as a pseudo-class. 
- */
-            if($pseudo !== 'not') {
-                if(in_array($pseudo,$pseudo_elements))
-                    $ps_el++;
-                else
-                    $ps_cl++;
-                // see below note on $pseudo_classes
+        $ps_pos = 0;
+        $pseudoers = $selector;
+        while(strlen($pseudoers)) {
+            if(preg_match('/:{1,2}([a-z0-9-]+)/ims', $pseudoers, $n)) {
+                $pseudo = $n[1];
+    /**
+     * Selectors inside the negation pseudo-class are counted like any other, 
+     * but the negation itself does not count as a pseudo-class. 
+     */
+                if($pseudo != 'not') {
+                    if(in_array($pseudo,$pseudo_elements))
+                        $ps_el++;
+                    else
+                        $ps_cl++;
+                    // see below note on $pseudo_classes
+                }
+                $pseudoers = str_replace($n[0],'',$pseudoers);
+            } else {
+                break;
             }
         }
 
         // elements
         $el = 0;
-        $elements = preg_replace('/(\*)|((#|\.)[a-z0-9-_]+)|(\[.*?\])|(:{1,2}([a-z0-9-]+(\(.*?\))?))/ims', '', $selector);
-        $el = count(preg_split('/\s+/m',trim($elements)));
+        $elements = trim(preg_replace('/(\*|\>|~|\+)|((#|\.)[a-z0-9-_]+)|(\[.*?\])|(:{1,2}([a-z0-9-]+(\(.*?\))?))/ims', ' ', $selector));
+        $el = $elements == "" ? 0 : count(preg_split('/\s+/m',$elements));
 /**
  *      9. Calculating a selector's specificity
  *
@@ -339,15 +342,17 @@ foreach($match as $m) {
         $a = $id;
         $b = $cl + $at + $ps_cl;
         $c = $el + $ps_el;
-        $specificity = sprintf("%d",sprintf("%d%d%d",$a,$b,$c));
+        $specificity = sprintf("%d",ltrim($a.$b.$c, '0'));
         if(OUTPUT_JSON) {
             $out[] = [
                 'selector'    => preg_replace('/\s+/',' ',trim($selector)),
                 'specificity' => $specificity,
-                'position'    => $pos
+                'position'    => $pos,
+//                'elements-debug' => $elements,
+//                'a-b-c-debug'=>[$a,$b,$c]
             ];
         } else {
-            $out[] = "$specificity $pos";
+            $out[] = "$pos $specificity";
         }
     }
     $pos++; // increment here, not per comma-separated-value
