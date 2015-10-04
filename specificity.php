@@ -1,7 +1,7 @@
 <?php
 $all = file_get_contents($argv[1]);
-define(OUTPUT_JSON,($argv[2] == '--output-json'));
-define(OUTPUT_DATA,!OUTPUT_JSON);    
+define('OUTPUT_JSON',(isset($argv[2]) && $argv[2] == '--output-json'));
+define('OUTPUT_DATA',!OUTPUT_JSON);    
 
 // remove comments
 // I kept finding a */.some-class in my testing
